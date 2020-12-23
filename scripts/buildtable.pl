@@ -3,17 +3,23 @@ use strict;
 use warnings;
 
 my $topbip = 9999;
+my $include_layer = 1;
 
 my %RequiredFields = (
 	BIP => undef,
 	Title => undef,
 	Author => undef,
+	'Comments-Summary' => undef,
+	'Comments-URI' => undef,
 	Status => undef,
 	Type => undef,
 	Created => undef,
+	# License => undef,   (has exceptions)
 );
 my %MayHaveMulti = (
 	Author => undef,
+	'Comments-URI' => undef,
+	License => undef,
 	'Post-History' => undef,
 );
 my %DateField = (
@@ -24,16 +30,24 @@ my %EmailField = (
 	Editor => undef,
 );
 my %MiscField = (
+	'Comments-Summary' => undef,
+	'Discussions-To' => undef,
 	'Post-History' => undef,
+	'Replaces' => undef,
+	'Superseded-By' => undef,
 );
 
 my %ValidLayer = (
-	Process => undef,
+	'Consensus (soft fork)' => undef,
+	'Consensus (hard fork)' => undef,
+	'Peer Services' => undef,
+	'API/RPC' => undef,
+	'Applications' => undef,
 );
 my %ValidStatus = (
 	Draft => undef,
 	Deferred => undef,
-	Accepted => "background-color: #ffffcf",
+	Proposed => "background-color: #ffffcf",
 	Rejected => "background-color: #ffcfcf",
 	Withdrawn => "background-color: #ffcfcf",
 	Final => "background-color: #cfffcf",
@@ -45,6 +59,34 @@ my %ValidType = (
 	'Informational' => undef,
 	'Process' => undef,
 );
+my %RecommendedLicenses = (
+	'BSD-2-Clause' => undef,
+	'BSD-3-Clause' => undef,
+	'CC0-1.0' => undef,
+	'GNU-All-Permissive' => undef,
+);
+my %AcceptableLicenses = (
+	%RecommendedLicenses,
+	'Apache-2.0' => undef,
+	'BSL-1.0' => undef,
+	'CC-BY-4.0' => undef,
+	'CC-BY-SA-4.0' => undef,
+	'MIT' => undef,
+	'AGPL-3.0' => undef,
+	'AGPL-3.0+' => undef,
+	'FDL-1.3' => undef,
+	'GPL-2.0' => undef,
+	'GPL-2.0+' => undef,
+	'LGPL-2.1' => undef,
+	'LGPL-2.1+' => undef,
+);
+my %DefinedLicenses = (
+	%AcceptableLicenses,
+	'OPL' => undef,
+	'PD' => undef,
+);
+my %GrandfatheredPD = map { $_ => undef } qw(9 36 37 38 42 49 50 60 65 67 69 74 80 81 83 90 99 105 107 109 111 112 113 114 122 124 125 126 130 131 132 133 140 141 142 143 144 146 147 150 151 152);
+my %TolerateMissingLicense = map { $_ => undef } qw(1 10 11 12 13 14 15 16 21 31 33 34 35 39 43 44 45 47 61 64 68 70 71 72 73 101 102 106 120 121);
 
 my %emails;
 
@@ -57,7 +99,7 @@ while (++$bipnum <= $topbip) {
 			die "No <pre> in $fn" if eof $F;
 	}
 	my %found;
-	my ($title, $author, $status, $type);
+	my ($title, $author, $status, $type, $layer);
 	my ($field, $val);
 	while (<$F>) {
 		m[^</pre>$] && last;
@@ -65,6 +107,7 @@ while (++$bipnum <= $topbip) {
 			$field = $1;
 			$val = $2;
 			die "Duplicate $field field in $fn" if exists $found{$field};
+			die "Too many spaces in $fn" if $val =~ /^\s/;
 		} elsif (m[^  ( +)(.*\S)$]) {
 			die "Continuation of non-field in $fn" unless defined $field;
 			die "Too many spaces in $fn" if length $1 != 2 + length $field;
@@ -73,7 +116,6 @@ while (++$bipnum <= $topbip) {
 		} else {
 			die "Bad line in $fn preamble";
 		}
-		++$found{$field};
 		die "Extra spaces in $fn" if $val =~ /^\s/;
 		if ($field eq 'BIP') {
 			die "$fn claims to be BIP $val" if $val ne $bipnum;
@@ -104,6 +146,16 @@ while (++$bipnum <= $topbip) {
 			}
 		} elsif ($field eq 'Layer') {  # BIP 123
 			die "Invalid layer $val in $fn" unless exists $ValidLayer{$val};
+			$layer = $val;
+		} elsif ($field eq 'License') {
+			die "Undefined license $val in $fn" unless exists $DefinedLicenses{$val};
+			if (not $found{License}) {
+				die "Unacceptable license $val in $fn" unless exists $AcceptableLicenses{$val} or ($val eq 'PD' and exists $GrandfatheredPD{$bipnum});
+			}
+		} elsif ($field eq 'Comments-URI') {
+			if (not $found{'Comments-URI'}) {
+				die unless $val eq sprintf('https://github.com/bitcoin/bips/wiki/Comments:BIP-%04d', $bipnum);
+			}
 		} elsif (exists $DateField{$field}) {
 			die "Invalid date format in $fn" unless $val =~ /^20\d{2}\-(?:0\d|1[012])\-(?:[012]\d|30|31)$/;
 		} elsif (exists $EmailField{$field}) {
@@ -111,6 +163,10 @@ while (++$bipnum <= $topbip) {
 		} elsif (not exists $MiscField{$field}) {
 			die "Unknown field $field in $fn";
 		}
+		++$found{$field};
+	}
+	if (not $found{License}) {
+		die "Missing License in $fn" unless exists $TolerateMissingLicense{$bipnum};
 	}
 	for my $field (keys %RequiredFields) {
 		die "Missing $field in $fn" unless $found{$field};
@@ -121,6 +177,13 @@ while (++$bipnum <= $topbip) {
 	}
 	print "\n";
 	print "| [[${fn}|${bipnum}]]\n";
+	if ($include_layer) {
+		if (defined $layer) {
+			print "| ${layer}\n";
+		} else {
+			print "|\n";
+		}
+	}
 	print "| ${title}\n";
 	print "| ${author}\n";
 	print "| ${type}\n";

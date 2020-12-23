@@ -6,11 +6,15 @@ RECENT CHANGES:
 
 <pre>
   BIP: 32
+  Layer: Applications
   Title: Hierarchical Deterministic Wallets
   Author: Pieter Wuille <pieter.wuille@gmail.com>
+  Comments-Summary: No comments yet.
+  Comments-URI: https://github.com/bitcoin/bips/wiki/Comments:BIP-0032
   Status: Final
   Type: Informational
   Created: 2012-02-11
+  License: BSD-2-Clause
 </pre>
 
 ==Abstract==
@@ -20,6 +24,10 @@ This document describes hierarchical deterministic wallets (or "HD Wallets"): wa
 The specification is intended to set a standard for deterministic wallets that can be interchanged between different clients. Although the wallets described here have many features, not all are required by supporting clients.
 
 The specification consists of two parts. In a first part, a system for deriving a tree of keypairs from a single seed is presented. The second part demonstrates how to build a wallet structure on top of such a tree.
+
+==Copyright==
+
+This BIP is licensed under the 2-clause BSD license.
 
 ==Motivation==
 
@@ -257,7 +265,7 @@ Two Python implementations exist:
 
 PyCoin (https://github.com/richardkiss/pycoin) is a suite of utilities for dealing with Bitcoin that includes BIP0032 wallet features.  BIP32Utils (https://github.com/jmcorgan/bip32utils) is a library and command line interface specifically focused on BIP0032 wallets and scripting.
 
-A Java implementation is available at https://github.com/bitsofproof/supernode/blob/1.1/api/src/main/java/com/bitsofproof/supernode/api/ExtendedKey.java
+2 Java implementations exist: https://github.com/bitsofproof/supernode/blob/1.1/api/src/main/java/com/bitsofproof/supernode/api/ExtendedKey.java and https://github.com/bushidowallet/bushido-java-core/tree/master/src/main/java/com/bushidowallet/core/bitcoin/bip32
 
 A C++ implementation is available at https://github.com/ciphrex/mSIGNA/blob/master/deps/CoinCore/src/hdkeys.h
 
